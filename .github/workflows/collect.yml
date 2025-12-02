@@ -86,6 +86,7 @@ jobs:
 
           echo -e "\nEnabling Corepack for Yarn"
           sudo corepack enable
+          yarn set version stable
           echo "Node Version: $(node -v)"
           echo "Yarn version: $(yarn -v)"
 
@@ -118,6 +119,10 @@ jobs:
 
           echo -e "\nRunning Yarn"
           yarn install
+
+          echo -e "\nPacking Yarn offline cache"
+          mkdir -p offline/
+          corepack pack -o offline/yarn-offline.tar.gz
 
           echo -e "\nPacking Playwright packages"
           mkdir -p offline/npm
