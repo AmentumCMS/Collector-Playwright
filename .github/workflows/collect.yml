@@ -97,7 +97,7 @@ jobs:
       - name: Run yarn with verdaccio
         run: |
           export XDG_DATA_HOME=$PWD
-          export PLAYWRIGHT_BROWSERS_PATH=${{ github.WORKSPACE }}offline/browsers
+          export PLAYWRIGHT_BROWSERS_PATH=${{ github.WORKSPACE }}/offline/browsers
           mkdir -p offline/browsers 
 
           echo -e "\nRunning Verdaccio"
