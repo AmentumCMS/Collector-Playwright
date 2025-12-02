@@ -97,7 +97,7 @@ jobs:
       - name: Run yarn with verdaccio
         run: |
           export XDG_DATA_HOME=$PWD
-          export PLAYWRIGHT_BROWSERS_PATH=offline/browsers
+          export PLAYWRIGHT_BROWSERS_PATH=${{ github.WORKSPACE }}offline/browsers
           mkdir -p offline/browsers 
 
           echo -e "\nRunning Verdaccio"
@@ -123,6 +123,7 @@ jobs:
           mkdir -p offline/npm
           cd offline/npm
           npm pack playwright @playwright/test
+          cd -
 
           echo -e "\nInstalling Playwright Browsers"
           npx playwright install --with-deps
