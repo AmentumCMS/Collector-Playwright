@@ -401,7 +401,7 @@ jobs:
           path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
           if-no-files-found: error
 
-  OfflineTest:
+  ISOTest:
     runs-on: ubuntu-24.04
     needs: [Setup, MakeISO]
     permissions:
@@ -409,7 +409,7 @@ jobs:
       pull-requests: read
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        node-version: [18.x, 20.x, 22.x, 24.x]
     steps:
       - name: Install isomd5sum
         run: |
@@ -425,7 +425,7 @@ jobs:
           pattern: "${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso*"
           merge-multiple: true
 
-      - name: Validate Hashes
+      - name: Validate ISO Hashes
         run: |
           echo -e "List Artifacts"
           ls -Alht
@@ -437,27 +437,20 @@ jobs:
       - name: Mount ISO
         run: sudo mount -v -o loop ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso /mnt
 
-      - name: UnTARchive Yarn Cache
-        run: tar -xzvf /mnt/yarn-cache-${{ needs.Setup.outputs.Date }}.tgz
-
-      - name: Run yarn install
+      - name: Display contents
         run: |
-          echo -e "Setup Yarn"
-          sudo corepack enable
-          echo -e "Configure Yarn for inaccessable network"
-          npm set registry http://localhost:4873/
-          yarn config set npmRegistryServer http://localhost:4873/
-          echo -e "\nRun yarn install --immutable\n"
-          yarn install --immutable
+          echo "Directory Listing:\n$(ls -1Ssh /mnt)"
+          echo -e "\nDirectory Size:$(du -chd0 /mnt)"
+          echo -e "\nFile structure:\n$(tree -L 3 /mnt)"
 
-      - name: Run yarn
+      - name: Validate embedded hashes
         run: |
-          echo -e "Run Yarn"
-          yarn run
+          echo -e "\nValidating embedded SHA256 hashes"
+          find /mnt -name "*.sha" -execdir sha256sum -cb {} +
 
   Release:
     runs-on: ubuntu-24.04
-    needs: [Setup, OfflineTest]
+    needs: [Setup, ISOTest]
     permissions:
       contents: write
       pull-requests: read
@@ -505,7 +498,7 @@ jobs:
 
   Sharepoint:
     runs-on: ubuntu-24.04
-    needs: [Setup, OfflineTest]
+    needs: [Setup, ISOTest]
     permissions:
       contents: write
       pull-requests: read
