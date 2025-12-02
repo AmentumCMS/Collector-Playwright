@@ -373,7 +373,7 @@ jobs:
 
       - name: Generate Comprehensive Artifacts Hash File
         run: |
-          sha256sum -b ${{ vars.COLLECTOR }}*${{ needs.Setup.outputs.Date }}* | tee \
+          sha256sum -b ${{ vars.COLLECTOR }}-* *.md vscode | tee \
             ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.sha
 
       - name: Upload Artifact Hash File
@@ -388,7 +388,7 @@ jobs:
             -V '${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}' \
             -A '${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}' \
             -o ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso \
-            ${{ vars.COLLECTOR }}-*.* *.md vscode
+            ${{ vars.COLLECTOR }}-* *.md vscode
 
       - name: Implant MD5 sum into iso
         run: implantisomd5 ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso
