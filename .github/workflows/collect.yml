@@ -251,10 +251,10 @@ jobs:
           path: ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz*
           if-no-files-found: error
 
-      - name: Upload Logs
+      - name: Upload Verdaccio Logs
         uses: actions/upload-artifact@v4
         with:
-          name: Logs-${{ needs.Setup.outputs.Date }}.log
+          name: Verdaccio-Logs-${{ needs.Setup.outputs.Date }}.log
           path: "verdaccio/*.log"
 
   Skopeo:
@@ -387,8 +387,8 @@ jobs:
           curl -L -o ISO/vscode/playwright.vsix \
             https://marketplace.visualstudio.com/_apis/public/gallery/publishers/ms-playwright/vsextensions/playwright/latest/vspackage
 
-      - name: Copy README to ${{ vars.COLLECTOR }} ISO
-        run: cp -v README.md ISO/
+      - name: Copy Markdowns to ISO
+        run: cp -v *.md ISO/
 
       - name: Show Artifacts
         run: |
@@ -398,9 +398,11 @@ jobs:
 
       - name: Generate Comprehensive Artifacts Hash File
         run: |
-          sha256sum -b ISO ISO/vscode | tee \
+          cd ISO
+          sha256sum -b * vscode/* | tee \
             ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.sha
           cp -v ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.??? ISO/
+          cd -
 
       - name: Make ISO
         run: |
@@ -521,6 +523,7 @@ jobs:
           make_latest: true
           files: |
             ${{ vars.COLLECTOR }}-[ovnyc]*.tgz*
+            *.sha
 
   Sharepoint:
     runs-on: ubuntu-24.04
