@@ -124,7 +124,8 @@ jobs:
 
           echo -e "\n\nInstalling Playwright Browsers"
           mkdir -p offline/browsers
-          PLAYWRIGHT_BROWSERS_PATH=offline/browsers npx playwright install --with-deps
+          PLAYWRIGHT_BROWSERS_PATH=offline/browsers 
+          npx playwright install --with-deps
 
       - name: Download VSCode extension
         run: |
@@ -139,10 +140,21 @@ jobs:
           echo -e "\nListing Consumption"
           du -chd0 offline/*
 
+      - name: TARchive browser directory
+        run: |
+          tar -cvI pigz -f ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz \
+            -C offline --remove-files browsers \
+            | tee ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz.txt
+
+      - name: TARchive browsers directory SHA HASH
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz | tee \
+            ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz.sha
+
       - name: TARchive offline directory
         run: |
           tar -cvI pigz -f ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz \
-            offline \
+            --remove-files offline \
             | tee ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz.txt
 
       - name: TARchive offline directory SHA HASH
@@ -179,16 +191,17 @@ jobs:
           sha256sum -b ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz | tee \
             ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz.sha
 
-      - name: TARchive yarn cache directory
-        run: |
-          tar -cvI pigz -f ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz \
-            .yarn yarn.lock \
-            | tee ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz.txt
-
       - name: TARchive verdaccio storage directory SHA HASH
         run: |
           sha256sum -b ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz | tee \
             ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz.sha
+
+      - name: Upload browser artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz
+          path: ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz*
+          if-no-files-found: error
 
       - name: Upload Offline artifacts
         uses: actions/upload-artifact@v4
@@ -202,13 +215,6 @@ jobs:
         with:
           name: ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz*
-          if-no-files-found: error
-
-      - name: Upload yarn-cache artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz
-          path: ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz*
           if-no-files-found: error
 
       - name: Upload node-modules artifacts
@@ -407,17 +413,11 @@ jobs:
     permissions:
       contents: write
       pull-requests: read
-    strategy:
-      matrix:
-        node-version: [18.x, 20.x, 22.x, 24.x]
     steps:
       - name: Install isomd5sum
         run: |
           sudo apt-get update -y
-          sudo apt-get install -y isomd5sum
-
-      - name: Check out repository code
-        uses: actions/checkout@v4
+          sudo apt-get install -y isomd5sum tree
 
       - name: Download ISO and hash
         uses: actions/download-artifact@v4
@@ -439,14 +439,14 @@ jobs:
 
       - name: Display contents
         run: |
-          echo "Directory Listing:\n$(ls -1Ssh /mnt)"
+          echo -e "Directory Listing: $(ls -1Ssh /mnt)"
           echo -e "\nDirectory Size:$(du -chd0 /mnt)"
           echo -e "\nFile structure:\n$(tree -L 3 /mnt)"
 
       - name: Validate embedded hashes
         run: |
           echo -e "\nValidating embedded SHA256 hashes"
-          find /mnt -name "*.sha" -execdir sha256sum -cb {} +
+          find /mnt -name "*.sha" -execdir sha256sum -c {} +
 
   Release:
     runs-on: ubuntu-24.04
