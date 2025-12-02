@@ -18,10 +18,10 @@ jobs:
       - name: Get current date
         id: DATE
         run: |
-          echo "Getting Date"
+          echo -n "Getting Date: "
           echo "DATE=$(date '+%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
-          echo -e "\nFile:\n$GITHUB_OUTPUT"
-          echo "Values:"
+          echo -e "$DATE\nFile:\n$GITHUB_OUTPUT"
+          echo -e "\nValues:"
           cat $GITHUB_OUTPUT
 
       - name: Get current node versions
@@ -96,8 +96,8 @@ jobs:
       - name: Run yarn with verdaccio
         run: |
           export XDG_DATA_HOME=$PWD
-          export PLAYWRIGHT_BROWSERS_PATH=${{ github.WORKSPACE }}/offline/browsers
-          mkdir -p offline/browsers 
+          export PLAYWRIGHT_BROWSERS_PATH=${{ github.WORKSPACE }}/browsers
+          mkdir -p browsers 
 
           echo -e "\nRunning Verdaccio"
           yarn dlx verdaccio >\
@@ -137,6 +137,9 @@ jobs:
           curl -L -o offline/vscode/playwright.vsix \
             https://marketplace.visualstudio.com/_apis/public/gallery/publishers/ms-playwright/vsextensions/playwright/latest/vspackage
 
+      - name: Yarn Listings
+        run: echo -e "\nListing .yarn/*:\n$(ls -1Ssh .yarn/*)"
+
       - name: Offline Listings
         run: |
           echo -e "\nListing Offline/*"
@@ -147,7 +150,7 @@ jobs:
       - name: TARchive browser directory
         run: |
           tar -cvI pigz -f ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz \
-            -C offline --remove-files browsers \
+            --remove-files browsers \
             | tee ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz.txt
 
       - name: TARchive browsers directory SHA HASH
