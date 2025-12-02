@@ -359,26 +359,28 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           merge-multiple: true
+          path: ISO
 
       - name: Download VSCode extension
         run: |
-          mkdir -p vscode
-          curl -L -o vscode/playwright.vsix \
+          mkdir -p ISO/vscode
+          curl -L -o ISO/vscode/playwright.vsix \
             https://marketplace.visualstudio.com/_apis/public/gallery/publishers/ms-playwright/vsextensions/playwright/latest/vspackage
 
+      - name: Copy README to ${{ vars.COLLECTOR }} ISO
+        run: cp -v README.md ISO/
+
       - name: Show Artifacts
-        run: ls -1Ssh *
+        run: |
+          echo -e "Directory Listing:\n$(ls -1Ssh ISO)"
+          echo -e "\nDirectory Size:\n$(du -chd0 ISO)"
+          echo -e "\nFile structure:\n$(tree -L 3 ISO|tee ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.txt)"
 
       - name: Generate Comprehensive Artifacts Hash File
         run: |
-          sha256sum -b ${{ vars.COLLECTOR }}-* *.md vscode | tee \
+          sha256sum -b ISO ISO/vscode | tee \
             ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.sha
-
-      - name: Upload Artifact Hash File
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.sha
-          path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.sha
+          cp -v ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.??? ISO/
 
       - name: Make ISO
         run: |
@@ -386,7 +388,7 @@ jobs:
             -V '${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}' \
             -A '${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}' \
             -o ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso \
-            ${{ vars.COLLECTOR }}-* *.md vscode
+            ISO
 
       - name: Implant MD5 sum into iso
         run: implantisomd5 ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso
@@ -395,7 +397,6 @@ jobs:
         run: |
           sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso | tee \
             ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
-          cat ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
 
       - name: Show ISO & Hash
         run: ls -1Ssh *.iso*
@@ -404,7 +405,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso
-          path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso
+          path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso*
           if-no-files-found: error
 
       - name: Upload ISO SHA
