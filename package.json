@@ -1,0 +1,15 @@
+{
+  "name": "collector-playwright",
+  "version": "1.0.0",
+  "description": "[![Release](https://github.com/amentumcms/Collector-Playwright/actions/workflows/collect.yml/badge.svg?branch=main)](https://github.com/amentumcms/Collector-Playwright/actions/workflows/collect.yml)",
+  "main": "index.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^24.10.1"
+  }
+}

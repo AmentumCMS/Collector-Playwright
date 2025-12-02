@@ -1,0 +1,437 @@
+name: Playwright Collector (Branch)
+run-name: ${{ github.actor }} is Collecting a Branch! 🚀
+on:
+  push:
+    branches-ignore:
+      - main
+  workflow_dispatch:
+
+jobs:
+  Setup:
+    runs-on: ubuntu-24.04
+    outputs:
+      Date: ${{ steps.date.outputs.date }}
+      v18:  ${{ steps.v.outputs.v18 }}
+      v20:  ${{ steps.v.outputs.v20 }}
+      v22:  ${{ steps.v.outputs.v22 }}
+    steps:
+      - name: Get current date
+        id: DATE
+        run: |
+          echo "Getting Date"
+          echo "DATE=$(date '+%Y%m%d-%H%M')" >> $GITHUB_OUTPUT
+          echo -e "\nFile:\n$GITHUB_OUTPUT"
+          echo "Values:"
+          cat $GITHUB_OUTPUT
+
+      - name: Get current node versions
+        id: v
+        run: |
+          echo -e "Getting versions"
+
+          # Fetch the Node.js version data
+          node_versions=$(curl -s https://nodejs.org/dist/index.json)
+          
+          # Function to get the latest version for a specific major version
+          get_version() { 
+            major_version=$1 
+            echo $node_versions |\
+              jq -r --arg major_version "v$major_version" \
+                '[.[] | select(.version | startswith($major_version))][0].version'
+          }
+
+          # Fetch the latest versions for v18, v20, and v22
+          v18=$(get_version 18)
+          v20=$(get_version 20)
+          v22=$(get_version 22)
+
+          echo "The latest Node.js v18 version is: $v18"
+          echo "The latest Node.js v20 version is: $v20"
+          echo "The latest Node.js v22 version is: $v22"
+
+          echo "v18=${v18}" >> $GITHUB_OUTPUT
+          echo "v20=${v20}" >> $GITHUB_OUTPUT
+          echo "v22=${v22}" >> $GITHUB_OUTPUT
+
+          echo -e "\nFile:\n$GITHUB_OUTPUT"
+          echo "Values:"
+          cat $GITHUB_OUTPUT
+
+  Collect:
+    runs-on: ubuntu-24.04
+    needs: [Setup]
+
+    permissions:
+      contents: write
+      pull-requests: read
+
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+          lfs: true
+
+      - name: Use Node.js ${{ needs.Setup.outputs.v22 }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ needs.Setup.outputs.v22 }}
+
+      - name: Enable Corepack
+        run: |
+          echo -e "\nUpdating apt repositories"
+          sudo apt-get update -y
+
+          echo -e "\nEnabling Corepack for Yarn"
+          sudo corepack enable
+          echo "Node Version: $(node -v)"
+          echo "Yarn version: $(yarn -v)"
+
+      - name: Setup Git
+        run: |
+          git config user.name "$(git log -n 1 --pretty=format:%an)"
+          git config user.email "$(git log -n 1 --pretty=format:%ae)"
+
+      - name: Run yarn with verdaccio
+        run: |
+          export XDG_DATA_HOME=$PWD
+
+          echo -e "\nRunning Verdaccio"
+          yarn dlx verdaccio >\
+            verdaccio/verdaccio.log 2>\
+            verdaccio/verdaccio-err.log &
+          tail -f verdaccio/verdaccio.log & P=$! && sleep 30 && kill -9 $P
+          echo -e "\nTailing errors\n" &&\
+          tail verdaccio/verdaccio-err.log
+
+          echo -e "\nSetting up registries"
+          npm set registry http://localhost:4873/
+          yarn config set npmRegistryServer http://localhost:4873/
+
+          echo -e "\nChecking Connectivity\n"
+          curl http://localhost:4873 -o test.html
+          sleep 1
+
+          echo -e "\nRunning Yarn"
+          yarn install
+
+          echo -e "\n\nPacking Playwright packages"
+          mkdir -p offline/npm
+          cd offline/npm
+          npm pack playwright @playwright/test
+
+          echo -e "\n\nInstalling Playwright Browsers"
+          mkdir -p offline/browsers
+          PLAYWRIGHT_BROWSERS_PATH=offline/browsers npx playwright install --with-deps
+
+      - name: Download VSCode extension
+        run: |
+          mkdir -p offline/vscode
+          curl -L -o offline/vscode/playwright.vsix \
+            https://marketplace.visualstudio.com/_apis/public/gallery/publishers/ms-playwright/vsextensions/playwright/latest/vspackage
+
+      - name: Offline Listings
+        run: |
+          echo -e "\nListing Offline/*"
+          ls -1Ssh offline/*
+          echo -e "\nListing Consumption"
+          du -chd0 offline/*
+
+      - name: TARchive offline directory
+        run: |
+          tar -cvI pigz -f ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz \
+            offline \
+            | tee ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz.txt
+
+      - name: TARchive offline directory SHA HASH
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz | tee \
+            ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz.sha
+
+      - name: Verdaccio Listings
+        run: |
+          echo -e "\nListing verdaccio/*"
+          ls -1Ssh verdaccio/*
+          echo -e "\nListing Consumption"
+          du -chd0 node_modules verdaccio/*
+
+      - name: TARchive verdaccio storage directory
+        run: |
+          tar -cvI pigz -f ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz \
+            verdaccio \
+            | tee ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz.txt
+
+      - name: TARchive verdaccio storage directory SHA HASH
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz | tee \
+            ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz.sha
+      
+      - name: TARchive node_modules directory
+        run: |
+          tar -cvI pigz -f ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz \
+            node_modules yarn.lock \
+            | tee ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz.txt
+
+      - name: TARchive node_modules directory SHA HASH
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz | tee \
+            ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz.sha
+
+      - name: TARchive yarn cache directory
+        run: |
+          tar -cvI pigz -f ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz \
+            .yarn yarn.lock \
+            | tee ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz.txt
+
+      - name: TARchive verdaccio storage directory SHA HASH
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz | tee \
+            ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz.sha
+
+      - name: Upload Offline artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz
+          path: ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz*
+          if-no-files-found: error
+
+      - name: Upload verdaccio artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz
+          path: ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz*
+          if-no-files-found: error
+
+      - name: Upload yarn-cache artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz
+          path: ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz*
+          if-no-files-found: error
+
+      - name: Upload node-modules artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz
+          path: ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz*
+          if-no-files-found: error
+
+      - name: Upload Logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: Logs-${{ needs.Setup.outputs.Date }}.log
+          path: "verdaccio/*.log"
+
+  Skopeo:
+    needs: [Setup]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install Skopeo
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y skopeo pigz
+
+      - name: Run Skopeo Sync
+        run: |
+          skopeo sync \
+            --src yaml --dest dir \
+            ${{ vars.COLLECTOR }}.yml \
+            ${{ vars.COLLECTOR }}
+
+      - name: Directory Contents
+        run: |
+          echo -e "\nDirectory Contents"
+          ls -lAhS . ${{ vars.COLLECTOR }}
+          echo -e "\nDirectory Size"
+          du -hd2 .
+
+      - name: TARchive Skopeo Output
+        run: |
+          tar -cv -Ipigz --remove-files \
+            -f ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz ${{ vars.COLLECTOR }} \
+          | tee ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz.txt
+
+      - name: Generate Hash
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz | tee \
+            ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz.sha
+ 
+      - name: List files 
+        run: ls -1Ssh ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz*
+
+      - name: Upload TARchive artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz
+          path: ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz*
+          if-no-files-found: error
+
+  Code:
+    needs: [Setup]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Setup Git
+        run: |
+          git config user.name "$(git log -n 1 --pretty=format:%an)"
+          git config user.email "$(git log -n 1 --pretty=format:%ae)"
+
+      - name: Update Submodules if needed
+        shell: bash
+        run: git submodule update --init --recursive --remote
+
+      - name: Bundle Repo1 code base for ${{ vars.COLLECTOR }}
+        run: |
+          git bundle create --progress ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.bundle --all
+          echo -e "\nDirectory Listing $(ls -1Ssh *)"
+
+      - name: Generate Hash
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.bundle | tee \
+            ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.bundle.sha
+
+      - name: Upload bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.bundle
+          path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.bundle*
+          if-no-files-found: error
+
+      - name: TARchive code base for ${{ vars.COLLECTOR }}
+        run: |
+          tar -cvI pigz -C .. \
+            -f ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.tgz $(basename ${{ github.WORKSPACE }}) \
+            | tee ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.tgz.txt
+
+      - name: Generate TARchive Hash
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.tgz | tee \
+            ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.tgz.sha
+
+      - name: Directory Listing
+        run: echo -e "\nDirectory Listing for $PWD\n$(ls -1Ssh)"
+
+      - name: Upload Tarchive, ToC, and hash
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.tgz
+          path: ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.tgz*
+          if-no-files-found: error
+
+  MakeISO:
+    runs-on: ubuntu-24.04
+    needs: [Setup, Code, Skopeo, Collect]
+    env:
+      GH_TOKEN: ${{ github.token }}
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Install mkisofs
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y mkisofs isomd5sum
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Download VSCode extension
+        run: |
+          mkdir -p vscode
+          curl -L -o vscode/playwright.vsix \
+            https://marketplace.visualstudio.com/_apis/public/gallery/publishers/ms-playwright/vsextensions/playwright/latest/vspackage
+
+      - name: Show Artifacts
+        run: ls -1Ssh *
+
+      - name: Generate Comprehensive Artifacts Hash File
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}*${{ needs.Setup.outputs.Date }}* | tee \
+            ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.sha
+
+      - name: Upload Artifact Hash File
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.sha
+          path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.sha
+
+      - name: Make ISO
+        run: |
+          mkisofs -J -R -v -T -l \
+            -V '${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}' \
+            -A '${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}' \
+            -o ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso \
+            ${{ vars.COLLECTOR }}-*.* *.md vscode
+
+      - name: Implant MD5 sum into iso
+        run: implantisomd5 ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso
+
+      - name: Generate ISO Hash
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso | tee \
+            ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
+          cat ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
+
+      - name: Show ISO & Hash
+        run: ls -1Ssh *.iso*
+
+      - name: Upload ISO
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso
+          path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso
+          if-no-files-found: error
+
+      - name: Upload ISO SHA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
+          path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
+
+  Release:
+    runs-on: ubuntu-24.04
+    needs: [Setup, MakeISO]
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: ${{ vars.COLLECTOR }}-[ovnyc]*.tgz
+          merge-multiple: true
+
+      - name: Show Artifacts
+        run: |
+          echo "Directory Listing:\n$(ls -1Ssh ${{ vars.COLLECTOR }}-*.*)"
+          echo -e "\nDirectory Size:$(du -chd0 ${{ vars.COLLECTOR }}-*.*)"
+
+  Sharepoint:
+    runs-on: ubuntu-24.04
+    needs: [Setup, MakeISO]
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Show Artifacts
+        run: |
+          echo "Directory Listing:\n$(ls -1Ssh ${{ vars.COLLECTOR }}-*.*)"
+          echo -e "\nDirectory Size:$(du -chd0 ${{ vars.COLLECTOR }}-*.*)"
