@@ -437,8 +437,8 @@ jobs:
 
       - name: Display contents
         run: |
-          echo -e "Directory Listing: $(ls -1Ssh /mnt)"
-          echo -e "\nDirectory Size:$(du -chd0 /mnt)"
+          echo -e "Directory Listing:\n$(ls -1Ssh /mnt)"
+          echo -e "\nDirectory Size:\n$(du -chd0 /mnt)"
           echo -e "\nFile structure:\n$(tree -L 3 /mnt)"
 
       - name: Validate embedded hashes
@@ -465,8 +465,8 @@ jobs:
 
       - name: Show Artifacts
         run: |
-          echo "Directory Listing:\n$(ls -1Ssh ${{ vars.COLLECTOR }}-*.*)"
-          echo -e "\nDirectory Size:$(du -chd0 ${{ vars.COLLECTOR }}-*.*)"
+          echo -e "Directory Listing:\n$(ls -1Ssh ${{ vars.COLLECTOR }}-*.*)"
+          echo -e "\nDirectory Size:\n$(du -chd0 ${{ vars.COLLECTOR }}-*.*)"
 
   Sharepoint:
     runs-on: ubuntu-24.04
@@ -482,5 +482,5 @@ jobs:
 
       - name: Show Artifacts
         run: |
-          echo "Directory Listing:\n$(ls -1Ssh ${{ vars.COLLECTOR }}-*.*)"
+          echo -e "Directory Listing:\n$(ls -1Ssh ${{ vars.COLLECTOR }}-*.*)"
           echo -e "\nDirectory Size:$(du -chd0 ${{ vars.COLLECTOR }}-*.*)"
