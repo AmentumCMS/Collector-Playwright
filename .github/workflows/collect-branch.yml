@@ -397,13 +397,69 @@ jobs:
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
           path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
+          if-no-files-found: error
 
-  Release:
+  OfflineTest:
     runs-on: ubuntu-24.04
     needs: [Setup, MakeISO]
     permissions:
       contents: write
       pull-requests: read
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x, 22.x]
+    steps:
+      - name: Install isomd5sum
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y isomd5sum
+
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - name: Download ISO and hash
+        uses: actions/download-artifact@v4
+        with:
+          pattern: "${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso*"
+          merge-multiple: true
+
+      - name: Validate Hashes
+        run: |
+          echo -e "List Artifacts"
+          ls -Alht
+          echo -e "\nCheck injected ISO MD5"
+          checkisomd5 ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso
+          echo -e "\nCheck ISO sha256"
+          sha256sum -cw ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
+
+      - name: Mount ISO
+        run: sudo mount -v -o loop ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso /mnt
+
+      - name: UnTARchive Yarn Cache
+        run: tar -xzvf /mnt/yarn-cache-${{ needs.Setup.outputs.Date }}.tgz
+
+      - name: Run yarn install
+        run: |
+          echo -e "Setup Yarn"
+          sudo corepack enable
+          echo -e "Configure Yarn for inaccessable network"
+          npm set registry http://localhost:4873/
+          yarn config set npmRegistryServer http://localhost:4873/
+          echo -e "\nRun yarn install --immutable\n"
+          yarn install --immutable
+
+      - name: Run yarn
+        run: |
+          echo -e "Run Yarn"
+          yarn run
+
+  Release:
+    runs-on: ubuntu-24.04
+    needs: [Setup, OfflineTest]
+    permissions:
+      contents: write
+      pull-requests: read
+
     steps:
       - name: Check out repository code
         uses: actions/checkout@v4
@@ -421,7 +477,7 @@ jobs:
 
   Sharepoint:
     runs-on: ubuntu-24.04
-    needs: [Setup, MakeISO]
+    needs: [Setup, OfflineTest]
     permissions:
       contents: write
       pull-requests: read
