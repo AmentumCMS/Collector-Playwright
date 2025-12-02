@@ -184,6 +184,11 @@ jobs:
 
       - name: TARchive verdaccio storage directory SHA HASH
         run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz | tee \
+            ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz.sha
+
+      - name: TARchive verdaccio storage directory SHA HASH
+        run: |
           sha256sum -b ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz | tee \
             ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz.sha
       
@@ -197,11 +202,17 @@ jobs:
         run: |
           sha256sum -b ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz | tee \
             ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz.sha
-
-      - name: TARchive verdaccio storage directory SHA HASH
+      
+      - name: TARchive .yarn directory
         run: |
-          sha256sum -b ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz | tee \
-            ${{ vars.COLLECTOR }}-yarn-cache-${{ needs.Setup.outputs.Date }}.tgz.sha
+          tar -cvI pigz -f ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz \
+            .yarn yarn.lock \
+            | tee ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz.txt
+
+      - name: TARchive yarn directory SHA HASH
+        run: |
+          sha256sum -b ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz | tee \
+            ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz.sha
 
       - name: Upload browser artifacts
         uses: actions/upload-artifact@v4
@@ -229,6 +240,13 @@ jobs:
         with:
           name: ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz*
+          if-no-files-found: error
+
+      - name: Upload yarn artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz
+          path: ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz*
           if-no-files-found: error
 
       - name: Upload Logs
