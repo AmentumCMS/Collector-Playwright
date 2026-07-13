@@ -13,9 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       Date: ${{ steps.date.outputs.date }}
-      v18:  ${{ steps.v.outputs.v18 }}
-      v20:  ${{ steps.v.outputs.v20 }}
-      v22:  ${{ steps.v.outputs.v22 }}
+      v18: ${{ steps.v.outputs.v18 }}
+      v20: ${{ steps.v.outputs.v20 }}
+      v22: ${{ steps.v.outputs.v22 }}
+      v24: ${{ steps.v.outputs.v24 }}
     steps:
       - name: Get current date
         id: DATE
@@ -33,7 +34,7 @@ jobs:
 
           # Fetch the Node.js version data
           node_versions=$(curl -s https://nodejs.org/dist/index.json)
-          
+
           # Function to get the latest version for a specific major version
           get_version() { 
             major_version=$1 
@@ -42,18 +43,21 @@ jobs:
                 '[.[] | select(.version | startswith($major_version))][0].version'
           }
 
-          # Fetch the latest versions for v18, v20, and v22
+          # Fetch the latest versions for v18, v20, v22, and v24
           v18=$(get_version 18)
           v20=$(get_version 20)
           v22=$(get_version 22)
+          v24=$(get_version 24)
 
           echo "The latest Node.js v18 version is: $v18"
           echo "The latest Node.js v20 version is: $v20"
           echo "The latest Node.js v22 version is: $v22"
+          echo "The latest Node.js v24 version is: $v24"
 
           echo "v18=${v18}" >> $GITHUB_OUTPUT
           echo "v20=${v20}" >> $GITHUB_OUTPUT
           echo "v22=${v22}" >> $GITHUB_OUTPUT
+          echo "v24=${v24}" >> $GITHUB_OUTPUT
 
           echo -e "\nFile:\n$GITHUB_OUTPUT"
           echo "Values:"
@@ -61,7 +65,7 @@ jobs:
 
   Collect:
     runs-on: ubuntu-latest
-    needs: [Setup]
+    needs: [ Setup ]
 
     permissions:
       contents: write
@@ -74,10 +78,10 @@ jobs:
           submodules: true
           lfs: true
 
-      - name: Use Node.js ${{ needs.Setup.outputs.v22 }}
-        uses: actions/setup-node@v4
+      - name: Use Node.js ${{ needs.Setup.outputs.v18 }}
+        uses: actions/setup-node@v6
         with:
-          node-version: ${{ needs.Setup.outputs.v22 }}
+          node-version: ${{ needs.Setup.outputs.v18 }}
 
       - name: Enable Corepack
         run: |
@@ -544,15 +548,15 @@ jobs:
           echo -e "Directory Listing:\n$(ls -1Ssh ${{ vars.COLLECTOR }}-*.*)"
           echo -e "\nDirectory Size:\n$(du -chd0 ${{ vars.COLLECTOR }}-*.*)"
 
-      - name: Send Files to Sharepoint
-        uses: amentumservices/sharepoint-file-upload-action@main
-        with:
-          file_path: "${{ vars.COLLECTOR }}-*.*"
-          host_name: ${{ secrets.SHAREPOINT_HOST }}
-          site_name: ${{ secrets.SHAREPOINT_SITE }}
-          upload_path: '${{ secrets.SHAREPOINT_BASEPATH }}/${{ vars.COLLECTOR }}/${{ needs.Setup.outputs.Date }}'
-          tenant_id: ${{ secrets.SHAREPOINT_TENANT_ID }}
-          client_id: ${{ secrets.SHAREPOINT_APP_ID }}
-          client_secret: ${{ secrets.SHAREPOINT_APP_SECRET }}
-          login_endpoint: 'login.microsoftonline.us'
-          graph_endpoint: 'graph.microsoft.us'
+      # - name: Send Files to Sharepoint
+      #   uses: amentumservices/sharepoint-file-upload-action@main
+      #   with:
+      #     file_path: "${{ vars.COLLECTOR }}-*.*"
+      #     host_name: ${{ secrets.SHAREPOINT_HOST }}
+      #     site_name: ${{ secrets.SHAREPOINT_SITE }}
+      #     upload_path: '${{ secrets.SHAREPOINT_BASEPATH }}/${{ vars.COLLECTOR }}/${{ needs.Setup.outputs.Date }}'
+      #     tenant_id: ${{ secrets.SHAREPOINT_TENANT_ID }}
+      #     client_id: ${{ secrets.SHAREPOINT_APP_ID }}
+      #     client_secret: ${{ secrets.SHAREPOINT_APP_SECRET }}
+      #     login_endpoint: 'login.microsoftonline.us'
+      #     graph_endpoint: 'graph.microsoft.us'

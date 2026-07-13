@@ -8,12 +8,13 @@ on:
 
 jobs:
   Setup:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       Date: ${{ steps.date.outputs.date }}
-      v18:  ${{ steps.v.outputs.v18 }}
-      v20:  ${{ steps.v.outputs.v20 }}
-      v22:  ${{ steps.v.outputs.v22 }}
+      v18: ${{ steps.v.outputs.v18 }}
+      v20: ${{ steps.v.outputs.v20 }}
+      v22: ${{ steps.v.outputs.v22 }}
+      v24: ${{ steps.v.outputs.v24 }}
     steps:
       - name: Get current date
         id: DATE
@@ -31,7 +32,7 @@ jobs:
 
           # Fetch the Node.js version data
           node_versions=$(curl -s https://nodejs.org/dist/index.json)
-          
+
           # Function to get the latest version for a specific major version
           get_version() { 
             major_version=$1 
@@ -40,26 +41,29 @@ jobs:
                 '[.[] | select(.version | startswith($major_version))][0].version'
           }
 
-          # Fetch the latest versions for v18, v20, and v22
+          # Fetch the latest versions for v18, v20, v22, and v24
           v18=$(get_version 18)
           v20=$(get_version 20)
           v22=$(get_version 22)
+          v24=$(get_version 24)
 
           echo "The latest Node.js v18 version is: $v18"
           echo "The latest Node.js v20 version is: $v20"
           echo "The latest Node.js v22 version is: $v22"
+          echo "The latest Node.js v24 version is: $v24"
 
           echo "v18=${v18}" >> $GITHUB_OUTPUT
           echo "v20=${v20}" >> $GITHUB_OUTPUT
           echo "v22=${v22}" >> $GITHUB_OUTPUT
+          echo "v24=${v24}" >> $GITHUB_OUTPUT
 
           echo -e "\nFile:\n$GITHUB_OUTPUT"
           echo "Values:"
           cat $GITHUB_OUTPUT
 
   Collect:
-    runs-on: ubuntu-24.04
-    needs: [Setup]
+    runs-on: ubuntu-latest
+    needs: [ Setup ]
 
     permissions:
       contents: write
@@ -67,15 +71,15 @@ jobs:
 
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           submodules: true
           lfs: true
 
-      - name: Use Node.js ${{ needs.Setup.outputs.v22 }}
-        uses: actions/setup-node@v4
+      - name: Use Node.js ${{ needs.Setup.outputs.v18 }}
+        uses: actions/setup-node@v6
         with:
-          node-version: ${{ needs.Setup.outputs.v22 }}
+          node-version: ${{ needs.Setup.outputs.v18 }}
 
       - name: Enable Corepack
         run: |
@@ -257,10 +261,10 @@ jobs:
 
   Skopeo:
     needs: [Setup]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install Skopeo
         run: |
@@ -269,7 +273,7 @@ jobs:
 
       - name: Run Skopeo Sync
         run: |
-          skopeo sync \
+          skopeo sync --scoped \
             --src yaml --dest dir \
             ${{ vars.COLLECTOR }}.yml \
             ${{ vars.COLLECTOR }}
@@ -304,10 +308,10 @@ jobs:
 
   Code:
     needs: [Setup]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Git
         run: |
@@ -357,7 +361,7 @@ jobs:
           if-no-files-found: error
 
   MakeISO:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: [Setup, Code, Skopeo, Collect]
     env:
       GH_TOKEN: ${{ github.token }}
@@ -366,7 +370,7 @@ jobs:
       pull-requests: read
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install mkisofs
         run: |
@@ -374,7 +378,7 @@ jobs:
           sudo apt-get install -y mkisofs isomd5sum
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           merge-multiple: true
           path: ISO
@@ -436,7 +440,7 @@ jobs:
           if-no-files-found: error
 
   ISOTest:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: [Setup, MakeISO]
     permissions:
       contents: write
@@ -448,7 +452,7 @@ jobs:
           sudo apt-get install -y isomd5sum tree
 
       - name: Download ISO and hash
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: "${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso*"
           merge-multiple: true
@@ -477,18 +481,20 @@ jobs:
           find /mnt -name "*.sha" -execdir sha256sum -c {} +
 
   Release:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: [Setup, ISOTest]
     permissions:
       contents: write
       pull-requests: read
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           pattern: ${{ vars.COLLECTOR }}-[ovnyc]*.tgz
           merge-multiple: true
@@ -499,14 +505,14 @@ jobs:
           echo -e "\nDirectory Size:\n$(du -chd0 ${{ vars.COLLECTOR }}-*.*)"
 
   Sharepoint:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     needs: [Setup, ISOTest]
     permissions:
       contents: write
       pull-requests: read
     steps:
       - name: Download Artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           merge-multiple: true
 
