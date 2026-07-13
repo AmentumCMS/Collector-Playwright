@@ -4,3 +4,8 @@ mcr.microsoft.com:
     playwright/java: ^v1.61.0$
     playwright/python: ^v1.61.0$
     playwright/dotnet: ^v1.61.0$
+registry1.dso.mil:
+  images-by-tag-regex:
+    ironbank/opensource/playwright/java: ^v1.61.0$
+    ironbank/opensource/playwright/python: ^v1.61.0$
+    ironbank/opensource/playwright/node: ^v1.61.0$

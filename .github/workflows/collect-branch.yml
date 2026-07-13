@@ -215,42 +215,42 @@ jobs:
             ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz.sha
 
       - name: Upload browser artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-browsers-${{ needs.Setup.outputs.Date }}.tgz*
           if-no-files-found: error
 
       - name: Upload Offline artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-offline-${{ needs.Setup.outputs.Date }}.tgz*
           if-no-files-found: error
 
       - name: Upload verdaccio artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-verdaccio-${{ needs.Setup.outputs.Date }}.tgz*
           if-no-files-found: error
 
       - name: Upload node-modules artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-node-modules-${{ needs.Setup.outputs.Date }}.tgz*
           if-no-files-found: error
 
       - name: Upload yarn artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-yarn-${{ needs.Setup.outputs.Date }}.tgz*
           if-no-files-found: error
 
       - name: Upload Verdaccio Logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Verdaccio-Logs-${{ needs.Setup.outputs.Date }}.log
           path: "verdaccio/*.log"
@@ -296,7 +296,7 @@ jobs:
         run: ls -1Ssh ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz*
 
       - name: Upload TARchive artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz*
@@ -329,7 +329,7 @@ jobs:
             ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.bundle.sha
 
       - name: Upload bundle
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.bundle
           path: ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.bundle*
@@ -350,7 +350,7 @@ jobs:
         run: echo -e "\nDirectory Listing for $PWD\n$(ls -1Ssh)"
 
       - name: Upload Tarchive, ToC, and hash
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.tgz
           path: ${{ vars.COLLECTOR }}-code-${{ needs.Setup.outputs.Date }}.tgz*
@@ -422,14 +422,14 @@ jobs:
         run: ls -1Ssh *.iso*
 
       - name: Upload ISO
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso
           path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso*
           if-no-files-found: error
 
       - name: Upload ISO SHA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
           path: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.iso.sha
