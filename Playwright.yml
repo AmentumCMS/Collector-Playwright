@@ -1,6 +1,6 @@
 mcr.microsoft.com:
   images-by-tag-regex:
-    playwright: ^v1.57.0$
-    playwright/java: ^v1.56.0$
-    playwright/python: ^v1.56.0$
-    playwright/dotnet: ^v1.56.0$
+    playwright: ^v1.62.0$
+    playwright/java: ^v1.61.0$
+    playwright/python: ^v1.61.0$
+    playwright/dotnet: ^v1.61.0$
