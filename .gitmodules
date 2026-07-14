@@ -1,0 +1,9 @@
+[submodule "playwright-node-ib"]
+	path = playwright-node-ib
+	url = https://repo1.dso.mil/dsop/opensource/microsoft/playwright/node.git
+[submodule "playwright-java-ib"]
+	path = playwright-java-ib
+	url = https://repo1.dso.mil/dsop/opensource/microsoft/playwright/java.git
+[submodule "playwright-python-ib"]
+	path = playwright-python-ib
+	url = https://repo1.dso.mil/dsop/opensource/microsoft/playwright/python.git
