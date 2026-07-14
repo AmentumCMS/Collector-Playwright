@@ -457,7 +457,7 @@ jobs:
       - name: Download skopeo artifact
         uses: actions/download-artifact@v8
         with:
-          name: ${{ vars.COLLECTOR }}-${{ needs.Setup.outputs.Date }}.tgz
+          name: ${{ vars.COLLECTOR }}-skopeo-${{ needs.Setup.outputs.Date }}.tgz
           path: scan-input
 
       - name: Show downloaded files
@@ -824,7 +824,7 @@ jobs:
 
   Sharepoint:
     runs-on: ubuntu-latest
-    needs: [Setup, ISOTest]
+    needs: [Setup, ISOTest, Scan]
     permissions:
       contents: write
       pull-requests: read
