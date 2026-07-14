@@ -7,3 +7,6 @@
 [submodule "playwright-python-ib"]
 	path = playwright-python-ib
 	url = https://repo1.dso.mil/dsop/opensource/microsoft/playwright/python.git
+[submodule "microsoft-playwright"]
+	path = microsoft-playwright
+	url = https://github.com/microsoft/playwright.git
